@@ -1,2 +1,5 @@
 from .App import App
-from .route import *
+
+__all__ = (
+    "App",
+)

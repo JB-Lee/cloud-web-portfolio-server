@@ -2,16 +2,16 @@ from abc import ABCMeta, abstractmethod
 
 from fastapi import FastAPI
 
-from .scheduler import Scheduler
+from .event import PushEventManager
 
 
 class RouteContainer(metaclass=ABCMeta):
-    scheduler: Scheduler
+    push_event_manager: PushEventManager
     app: FastAPI
 
-    def attach(self, app: FastAPI, scheduler: Scheduler):
+    def attach(self, app: FastAPI, push_event_manager: PushEventManager):
         self.app = app
-        self.scheduler = scheduler
+        self.push_event_manager = push_event_manager
         self.route()
 
     @abstractmethod

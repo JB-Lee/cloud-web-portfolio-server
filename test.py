@@ -2,7 +2,7 @@ import asyncio
 
 
 async def main():
-
+    pass
 
 # with DBSessionPool.get_instance() as conn:
 #     with conn.cursor() as cur:

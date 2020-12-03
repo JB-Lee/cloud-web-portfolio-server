@@ -1,4 +1,4 @@
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 from ..router import RouteContainer
 
@@ -9,14 +9,14 @@ class DefaultRoute(RouteContainer):
         async def test():
             return {"result": "asd"}
 
-        @self.app.get("/test/polling")
-        async def test_polling():
-            res = await self.scheduler.add_watcher("test")
-            return res
-
-        @self.app.websocket("/ws")
-        async def websocket_endpoint(websocket: WebSocket):
+        @self.app.websocket("/ws/add_watcher/{event}")
+        async def websocket_endpoint(websocket: WebSocket, event: str):
             await websocket.accept()
-            while True:
-                data = await websocket.receive()
-                await websocket.send_text(f"Message text was: {data}")
+            await self.push_event_manager.add_watcher(event, websocket)
+            try:
+                await websocket.receive()
+                self.push_event_manager.remove_watcher(event, websocket)
+
+            except WebSocketDisconnect:
+                print(event + " disconnect")
+                self.push_event_manager.remove_watcher(event, websocket)

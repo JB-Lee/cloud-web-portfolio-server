@@ -10,7 +10,7 @@ class CrawlingJob(JobContainer):
     def jobs(self):
         @self.scheduler.scheduled_job('interval', seconds=5)
         async def test():
-            await self.listener.invoke("test", code="001")
+            await self.push_event_manager.push("price", code="001", price=1000)
 
         @self.scheduler.scheduled_job('cron', day_of_week="1-5", hour="18", minute="0", id="daily_crawling")
         async def daily_crawling():
@@ -57,6 +57,8 @@ class CrawlingJob(JobContainer):
                 price = map(lambda x: x.get('data')[0][1], result)
                 price = tuple(map(lambda x: NAVER.REGEX_1.sub('', x), price))
 
+                rows = list(zip(codes, price))
+
                 sql = '''
                 MERGE INTO "Stock_Current"
                 USING DUAL
@@ -70,5 +72,9 @@ class CrawlingJob(JobContainer):
                         VALUES (:stock_id, SYSDATE, :price)'''
 
                 with conn.cursor() as cur:
-                    cur.executemany(sql, list(zip(codes, price)))
+                    cur.executemany(sql, rows)
                 conn.commit()
+
+                await asyncio.gather(
+                    *[self.push_event_manager.push(f"price_{code}", price=price) for code, price in rows]
+                )

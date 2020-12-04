@@ -1,19 +1,21 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI
 
+from session import SessionManager
 from .event import PushEventManager
 from .route.auth import AuthRoute
-from .route.test import DefaultRoute
+from .route.websocket import WebSocketRoute
 from .schedule.crawler import CrawlingJob
 from .scheduler import Scheduler
 
 App = FastAPI()
 
-pem = PushEventManager()
-scheduler = Scheduler(AsyncIOScheduler(), pem)
+session_manager = SessionManager()
+push_event_manager = PushEventManager()
+scheduler = Scheduler(AsyncIOScheduler(), push_event_manager)
 
-DefaultRoute().attach(App, pem)
-AuthRoute().attach(App, pem)
+WebSocketRoute().attach(App, push_event_manager, session_manager)
+AuthRoute().attach(App, push_event_manager, session_manager)
 
 scheduler.register_job(CrawlingJob())
 scheduler.start()

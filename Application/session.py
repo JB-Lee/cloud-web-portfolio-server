@@ -16,9 +16,18 @@ class SessionManager:
         with DBSessionPool.get_instance() as conn:
             with conn.cursor() as cur:
                 sql = '''
-                INSERT INTO "Session" (SESSION_ID, USER_ID, IP_ADDRESS, USER_AGENT, CREATION_TIME) 
-                VALUES (:s_id, :u_id, :ip_addr, :agent, SYSDATE)
-                '''
+                     MERGE INTO "Session"
+                     USING DUAL
+                         ON (USER_ID = RPAD(:u_id, 12))
+                     WHEN MATCHED THEN
+                         UPDATE SET
+                             SESSION_ID = :s_id,
+                             IP_ADDRESS = :ip_addr,
+                             USER_AGENT = :agent,
+                             CREATION_TIME = SYSDATE
+                     WHEN NOT MATCHED THEN
+                         INSERT (SESSION_ID, USER_ID, IP_ADDRESS, USER_AGENT, CREATION_TIME)
+                             VALUES (:s_id, :u_id, :ip_addr, :agent, SYSDATE)'''
 
                 new_session_id = str(uuid.uuid4())
 
@@ -29,7 +38,7 @@ class SessionManager:
             session_id=new_session_id,
             user_id=user_id,
             ip_address=ip_addr,
-            agent=user_agent,
+            user_agent=user_agent,
             last_modified=time.time())
 
         self.cache[new_session_id] = session
@@ -63,6 +72,10 @@ class SessionManager:
                 cur.execute(sql, s_id=session_id)
             conn.commit()
 
+    async def update_session(self, session_id: str):
+        if session_id in self.cache:
+            self.cache.get(session_id).last_modified = time.time()
+
     async def get_session(self, session_id: str) -> Optional[Session]:
         if session_id in self.cache:
             return self.cache.get(session_id)
@@ -77,7 +90,7 @@ class SessionManager:
                 FROM "Session" 
                 WHERE SESSION_ID = :s_id'''
 
-                cur.execute(sql, s_id="b08267d2-870f-4dac-b4fa-2642bc566403")
+                cur.execute(sql, s_id=session_id)
 
                 result = cur.fetchone()
 
@@ -88,7 +101,7 @@ class SessionManager:
             session_id=result[0],
             user_id=result[1],
             ip_address=result[2],
-            agent=result[3],
+            user_agent=result[3],
             last_modified=result[4].timestamp())
 
         self.cache[session_id] = session

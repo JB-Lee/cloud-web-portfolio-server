@@ -8,10 +8,6 @@ from ..scheduler import JobContainer
 class CrawlingJob(JobContainer):
 
     def jobs(self):
-        @self.scheduler.scheduled_job('interval', seconds=5)
-        async def test():
-            await self.push_event_manager.push("price", code="001", price=1000)
-
         @self.scheduler.scheduled_job('cron', day_of_week="1-5", hour="18", minute="0", id="daily_crawling")
         async def daily_crawling():
             with DBSessionPool.get_instance() as conn:
@@ -29,7 +25,7 @@ class CrawlingJob(JobContainer):
                 sql = '''
                      MERGE INTO "Stock_History"
                      USING DUAL
-                         ON (TRIM(STOCK_ID)=:stock_id AND "DATE"=TO_DATE(:today, 'YYYY.MM.DD'))
+                         ON (STOCK_ID = RPAD(:stock_id, 12) AND "DATE" = TO_DATE(:today, 'YYYY.MM.DD'))
                      WHEN MATCHED THEN
                          UPDATE SET
                              CLOSING_PRICE = :closing,
@@ -62,7 +58,7 @@ class CrawlingJob(JobContainer):
                 sql = '''
                 MERGE INTO "Stock_Current"
                 USING DUAL
-                    ON (TRIM(STOCK_ID)=:stock_id)
+                    ON (STOCK_ID = RPAD(:stock_id, 12))
                 WHEN MATCHED THEN
                     UPDATE SET
                         "DATE" = SYSDATE,

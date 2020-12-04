@@ -1,6 +1,6 @@
 from fastapi import WebSocket, WebSocketDisconnect
 
-from ..router import RouteContainer
+from ..container import RouteContainer
 
 
 class WebSocketRoute(RouteContainer):
